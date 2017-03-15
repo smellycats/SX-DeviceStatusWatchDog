@@ -5,7 +5,6 @@ import json
 import arrow
 import requests
 
-from helper_ping import Ping
 from helper_sms import SMS
 from helper_device import Device
 from ini_conf import MyIni
@@ -24,7 +23,6 @@ class WatchDog(object):
         self.my_ini = MyIni()
         
         self.sms = SMS(**self.my_ini.get_sms())
-        self.p = Ping(**self.my_ini.get_ping())
         self.dev = Device(**self.my_ini.get_device())
 	
 	# 设备状态字典 {'127.0.0.1': '2017-02-03 12:00:00'}
