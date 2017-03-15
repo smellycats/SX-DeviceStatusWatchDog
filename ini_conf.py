@@ -16,13 +16,6 @@ class MyIni(object):
         conf['port'] = self.cf.getint(section, 'port')
         return conf
 
-    def get_ping(self):
-        conf = {}
-        section = 'PING'
-        conf['host'] = self.cf.get(section, 'host')
-        conf['port'] = self.cf.getint(section, 'port')
-        return conf
-
     def get_sms(self):
         conf = {}
         section = 'SMS'
