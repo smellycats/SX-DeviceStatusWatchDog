@@ -10,12 +10,11 @@ class Device(object):
     def __init__(self, **kwargs):
         self.host = kwargs['host']
         self.port = kwargs['port']
-
+        self.base_path = kwargs['path']
+        
         self.headers = {'content-type': 'application/json'}
 
-	self.status = False
-
-	self.base_path = ''
+        self.status = False
 
     def get_device_list(self, type=None, city=None, timeout=15):
 	"""获取设备信息列表"""
