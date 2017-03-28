@@ -7,7 +7,7 @@ import requests
 
 from helper_sms import SMS
 from helper_device import Device
-from ini_conf import MyIni
+from my_yaml import MyYAML
 from my_logger import *
 
 
@@ -17,14 +17,11 @@ logger = logging.getLogger('root')
 
 class WatchDog(object):
     def __init__(self):
-	# 时间标记
-        self.time_flag = arrow.now().replace(hours=-1)
-
-        self.my_ini = MyIni()
+        ini = MyYAML()
+        self.my_ini = ini.get_ini()
         
-        self.sms = SMS(**self.my_ini.get_sms())
-        self.dev = Device(**self.my_ini.get_device())
-        self.dev.base_path = ''
+        self.sms = SMS(**dict(self.my_ini['sms']))
+        self.dev = Device(**dict(self.my_ini['device']))
 	
 	# 设备状态字典 {'127.0.0.1': '2017-02-03 12:00:00'}
         self.device_status_dict = {}
@@ -35,11 +32,15 @@ class WatchDog(object):
             3: set()
         }
         # 短信发送记录，形如{('441302001', 'IN'): <Arrow [2016-03-02T20:08:58.190000+08:00]>}
-        self.mobiles_list = []
-        # 短信发送时间间隔
+        self.mobiles_list = list(self.my_ini['mobiles'])
+        # 短信发送时间间隔 单位：小时
         self.send_time_step = 12
-	# 时间标记
-	self.time_flag = arrow.now()
+        # 检测时间间隔 单位：秒
+        self.time_interval = 30
+        # 时间标记
+        self.time_flag = arrow.now()
+        # type列表
+        self.type_list = [1, 2, 3]
 
     def __del__(self):
         pass
@@ -57,18 +58,18 @@ class WatchDog(object):
                 device_false_set.add(i['ip'])
         return device_dict, device_false_set
 
-
     def device_status_check(self, type=None):
         device_dict, device_false_set = self.get_device_dict(type)
         # 恢复设备集合
-        device_true_set = device_false_set - self.device_false_dict[type]
+        device_true_set = self.device_false_dict[type] - device_false_set
         self.device_false_dict[type] = device_false_set
 
         # 恢复短信发送列表
         sms_send_list = []
         for i in list(device_true_set):
             sms_send_list.append(device_dict[i])
-            del self.device_status_dict[i]   # 删除IP对应发送状态
+	    if self.device_status_dict.has_key(i):
+                del self.device_status_dict[i]   # 删除IP对应发送状态
         self.sms_send_info(sms_send_list, status=True)
 
         # 断开短信发送列表
@@ -110,11 +111,12 @@ class WatchDog(object):
                 # 当前时间
                 t = arrow.now()
                 # 每30秒检查一遍
-                if t > self.time_flag.replace(seconds=30):
-                    for i in [2, 3]:
+                if t > self.time_flag.replace(seconds=self.time_interval):
+                    for i in self.type_list:
                         self.device_status_check(i)
                     self.time_flag = t
             except Exception as e:
+		print(e)
                 logger.exception(e)
                 time.sleep(15)
             finally:
