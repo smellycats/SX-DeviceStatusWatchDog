@@ -31,7 +31,7 @@ class WatchDog(object):
             2: set(),
             3: set()
         }
-        # 短信发送记录，形如{('441302001', 'IN'): <Arrow [2016-03-02T20:08:58.190000+08:00]>}
+        # 短信发送电话列表
         self.mobiles_list = list(self.my_ini['mobiles'])
         # 断开后短信发送时间间隔 单位：小时
         self.send_false_time_step = 12
