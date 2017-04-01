@@ -23,7 +23,7 @@ class WatchDog(object):
         self.sms = SMS(**dict(self.my_ini['sms']))
         self.dev = Device(**dict(self.my_ini['device']))
 	
-	# 设备状态字典 {'127.0.0.1': '2017-02-03 12:00:00'}
+        # 设备状态字典 {'127.0.0.1': {'status': True, 'time': '2017-02-03 12:00:00'}}
         self.device_status_dict = {}
         # 设备连接失败字典
         self.device_false_dict = {
@@ -33,12 +33,14 @@ class WatchDog(object):
         }
         # 短信发送记录，形如{('441302001', 'IN'): <Arrow [2016-03-02T20:08:58.190000+08:00]>}
         self.mobiles_list = list(self.my_ini['mobiles'])
-        # 短信发送时间间隔 单位：小时
-        self.send_time_step = 12
+        # 断开后短信发送时间间隔 单位：小时
+        self.send_false_time_step = 12
+        # 恢复后短信发送时间间隔 单位：分钟
+        self.send_true_time_step = 30
         # 检测时间间隔 单位：秒
         self.time_interval = 30
         # 时间标记
-        self.time_flag = arrow.now()
+        self.time_flag = arrow.now().replace(seconds=-30)
         # type列表
         self.type_list = [1, 2, 3]
 
@@ -64,28 +66,38 @@ class WatchDog(object):
         device_true_set = self.device_false_dict[type] - device_false_set
         self.device_false_dict[type] = device_false_set
 
+        # 当前时间
+        now = arrow.now()
         # 恢复短信发送列表
         sms_send_list = []
         for i in list(device_true_set):
-            sms_send_list.append(device_dict[i])
-	    if self.device_status_dict.has_key(i):
-                del self.device_status_dict[i]   # 删除IP对应发送状态
+            last_send_time = self.device_status_dict.get(i, {}).get('time', None)
+            last_status = self.device_status_dict.get(i, {}).get('status', None)
+            if last_send_time is None:
+                self.device_status_dict[i] = {'status': True, 'time': now}
+                sms_send_list.append(device_dict[i])
+                continue
+            if last_status is False:
+                self.device_status_dict[i] = {'status': True, 'time': now}
+                sms_send_list.append(device_dict[i])
         self.sms_send_info(sms_send_list, status=True)
 
         # 断开短信发送列表
         sms_send_list2 = []
-        # 当前时间
-        now = arrow.now()
         for i in list(device_false_set):
             # 该设备状态最后发送短信时间
-            last_send_time = self.device_status_dict.get(i, None)
+            last_send_time = self.device_status_dict.get(i, {}).get('time', None)
+            last_status = self.device_status_dict.get(i, {}).get('status', None)
             if last_send_time is None:
-                self.device_status_dict[i] = now
+                self.device_status_dict[i] = {'status': False, 'time': now}
                 sms_send_list2.append(device_dict[i])
                 continue
             # 设备状态大于指定时间间隔则发送
-            if last_send_time.replace(hours=self.send_time_step) < now:
-                self.device_status_dict[i] = now
+            if last_status is False and last_send_time.replace(hours=self.send_false_time_step) < now:
+                self.device_status_dict[i] = {'status': False, 'time': now}
+                sms_send_list2.append(device_dict[i])
+            if last_status is True and last_send_time.replace(minutes=self.send_true_time_step) < now:
+                self.device_status_dict[i] = {'status': False, 'time': now}
                 sms_send_list2.append(device_dict[i])
         self.sms_send_info(sms_send_list2, status=False)
 
@@ -93,7 +105,8 @@ class WatchDog(object):
         """发送短信通知"""
 	if sms_send_list == []:
 	    return
-        content = u'[设备状态报警]\n'
+
+        content = u'[设备状态报警测试]\n'
         for i in sms_send_list:
             content += u'[{0}={1}]\n'.format(
                 i['ip'], i['type'])
@@ -116,7 +129,6 @@ class WatchDog(object):
                         self.device_status_check(i)
                     self.time_flag = t
             except Exception as e:
-		print(e)
                 logger.exception(e)
                 time.sleep(15)
             finally:
