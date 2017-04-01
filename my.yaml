@@ -1,0 +1,13 @@
+sms:
+  host: 127.0.0.1
+  port: 5000
+  user: 123
+  pwd: 456
+  path: ''
+device:
+  host: 127.0.0.1
+  port: 5001
+  path: ''
+mobiles:
+- '123'
+- '678'
