@@ -108,8 +108,7 @@ class WatchDog(object):
 
         content = u'[设备状态报警测试]\n'
         for i in sms_send_list:
-            content += u'[{0}={1}]\n'.format(
-                i['ip'], i['type'])
+            content += u'[{0}={1}]\n'.format(i['ip'], i['type'])
         if status:
             content += u'连接恢复'
         else:
